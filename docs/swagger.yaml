@@ -1,0 +1,548 @@
+basePath: /
+definitions:
+  models.Book:
+    properties:
+      category_id:
+        example: "0"
+        type: string
+      createdBy:
+        type: integer
+      id:
+        example: "0"
+        type: string
+      price:
+        description: Category Category `gorm:"foreignKey:CategoryId" json:"-"`
+        type: integer
+      title:
+        type: string
+    type: object
+  models.Cart:
+    properties:
+      book:
+        $ref: '#/definitions/models.Book'
+        description: Title int  `json:"title,string"`
+      bookID:
+        type: integer
+      string:
+        type: integer
+      user:
+        $ref: '#/definitions/models.User'
+        description: '`gorm:forignKey:"UserID"`'
+      userID:
+        type: integer
+    type: object
+  models.Category:
+    properties:
+      category_name:
+        type: string
+      createdBy:
+        type: integer
+      id:
+        example: "0"
+        type: string
+    type: object
+  models.User:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      firstname:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      lastname:
+        type: string
+      role_id:
+        example: "0"
+        type: string
+      updated_at:
+        type: string
+    type: object
+host: localhost:8081
+info:
+  contact:
+    name: API Support
+  description: Golang basic API with JWT Authentication and Authorization.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Book API With JWT
+  version: "1.0"
+paths:
+  /api/v1/Login:
+    post:
+      consumes:
+      - application/json
+      description: API Endpoint to register the user with the role of customer.
+      parameters:
+      - in: formData
+        name: email
+        required: true
+        type: string
+      - in: formData
+        name: password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: object
+      summary: Login endpoint is used by the user to login.
+      tags:
+      - auth
+  /api/v1/Register:
+    post:
+      consumes:
+      - application/json
+      description: API Endpoint to register the user with the role of customer.
+      parameters:
+      - description: Email of the user
+        in: formData
+        name: email
+        required: true
+        type: string
+      - description: First name of the user
+        in: formData
+        name: first_name
+        required: true
+        type: string
+      - description: Last name of the user
+        in: formData
+        name: last_name
+        required: true
+        type: string
+      - description: Password of the user
+        in: formData
+        name: password
+        required: true
+        type: string
+      - description: Confirm password.
+        in: formData
+        name: confirm_password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: object
+      summary: Register endpoint is used for customer registeration. ( Supervisors/admin
+        can be added only by admin. )
+      tags:
+      - auth
+  /api/v1/auth/admin/create:
+    post:
+      consumes:
+      - application/json
+      description: API Endpoint to register the user with the role of Supervisor or
+        Admin.
+      parameters:
+      - in: formData
+        name: confirmpassword
+        required: true
+        type: string
+      - in: formData
+        name: email
+        required: true
+        type: string
+      - in: formData
+        name: first_name
+        required: true
+        type: string
+      - in: formData
+        name: last_name
+        required: true
+        type: string
+      - in: formData
+        name: password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: object
+      summary: CreateAdmin endpoint is used by the admin role user to create a new
+        admin or supervisor account.
+      tags:
+      - admin
+  /api/v1/auth/books/:
+    get:
+      consumes:
+      - application/json
+      description: API Endpoint to register the user with the role of Supervisor or
+        Admin.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Book'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            type: object
+      summary: ListAllBook endpoint is used to list all book.
+      tags:
+      - book
+  /api/v1/auth/books/:id/:
+    get:
+      consumes:
+      - application/json
+      description: GetBook endpoint is used to get info of a book.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Book'
+        "400":
+          description: Bad Request
+          schema:
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            type: object
+      summary: GetBook endpoint is used to get info of a book..
+      tags:
+      - book
+    patch:
+      consumes:
+      - application/json
+      description: Updatebook endpoint is used by the supervisor role user to update
+        a new book
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Book'
+        "400":
+          description: Bad Request
+          schema:
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            type: object
+      summary: UpdateBook endpoint is used by the supervisor role user to update a
+        new book.
+      tags:
+      - book
+  /api/v1/auth/books/create:
+    post:
+      consumes:
+      - application/json
+      description: CreateBook endpoint is used by the supervisor role user to create
+        a new book
+      parameters:
+      - description: name of the book
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: category_id of the book
+        in: formData
+        name: category_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: object
+      summary: CreateBook endpoint is used by the supervisor role user to create a
+        new book.
+      tags:
+      - book
+  /api/v1/auth/books/delete/:id/:
+    delete:
+      consumes:
+      - application/json
+      description: DeleteBook endpoint is used to delete a book.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Book'
+        "400":
+          description: Bad Request
+          schema:
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            type: object
+      summary: DeleteBook endpoint is used to delete a book.
+      tags:
+      - book
+  /api/v1/auth/cart/add:
+    post:
+      consumes:
+      - application/json
+      description: AddToCart endpoint is used to add the book to the cart.
+      parameters:
+      - description: title of the book
+        in: formData
+        name: title
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Cart'
+        "400":
+          description: Bad Request
+          schema:
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            type: object
+      summary: AddToCart endpoint is used to add the book to the cart.
+      tags:
+      - book
+  /api/v1/auth/cart/delete/:id/:
+    delete:
+      consumes:
+      - application/json
+      description: DeleteFromCart endpoint is used to delete book from cart.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Cart'
+        "400":
+          description: Bad Request
+          schema:
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            type: object
+      summary: DeleteFromCart endpoint is used to delete book from cart.
+      tags:
+      - book
+  /api/v1/auth/cart/view:
+    get:
+      consumes:
+      - application/json
+      description: API Endpoint to view the cart items.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Cart'
+        "400":
+          description: Bad Request
+          schema:
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            type: object
+      summary: ViewCart endpoint is used to list all book.
+      tags:
+      - book
+  /api/v1/auth/category/:
+    get:
+      consumes:
+      - application/json
+      description: ListAllCategories endpoint is used to list all the categories.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Category'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            type: object
+      summary: ListAllCategories endpoint is used to list all the categories.
+      tags:
+      - category
+  /api/v1/auth/category/:id/:
+    get:
+      consumes:
+      - application/json
+      description: GetCategory endpoint is used to get info of a category.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Category'
+        "400":
+          description: Bad Request
+          schema:
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            type: object
+      summary: GetCategory endpoint is used to get info of a category..
+      tags:
+      - category
+    put:
+      consumes:
+      - application/json
+      description: UpdateCategory endpoint is used to get info of a category.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Category'
+        "400":
+          description: Bad Request
+          schema:
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            type: object
+      summary: UpdateCategory endpoint is used to get info of a category..
+      tags:
+      - category
+  /api/v1/auth/category/create:
+    post:
+      consumes:
+      - application/json
+      description: CreateCategory endpoint is used by admin to create category.
+      parameters:
+      - description: name of the category
+        in: formData
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Category'
+        "400":
+          description: Bad Request
+          schema:
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            type: object
+      summary: CreateCategory endpoint is used by admin to create category.
+      tags:
+      - category
+  /api/v1/auth/supervisor/create:
+    post:
+      consumes:
+      - application/json
+      description: API Endpoint to register the user with the role of Supervisor or
+        Admin.
+      parameters:
+      - in: formData
+        name: confirmpassword
+        required: true
+        type: string
+      - in: formData
+        name: email
+        required: true
+        type: string
+      - in: formData
+        name: first_name
+        required: true
+        type: string
+      - in: formData
+        name: last_name
+        required: true
+        type: string
+      - in: formData
+        name: password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            type: object
+      summary: CreateSupervisor endpoint is used by the admin role user to create
+        a new admin or supervisor account.
+      tags:
+      - supervisor
+swagger: "2.0"

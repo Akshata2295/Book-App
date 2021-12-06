@@ -1,0 +1,10 @@
+version: "4.1.1"
+
+services:
+  books:
+    image: book-app
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 8081:8081

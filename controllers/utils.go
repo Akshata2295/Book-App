@@ -3,11 +3,11 @@ package controllers
 import (
 	"Book-App/models"
 	"errors"
-	"unicode"
-
 	"fmt"
 	"log"
+	"unicode"
 
+	//jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -79,12 +79,12 @@ func DoesBookExist(ID int) bool {
 
 func CheckCredentials(useremail, userpassword string, db *gorm.DB) bool {
 	// db := c.MustGet("db").(*gorm.DB)
-	// var db *gorm.DB
+	//var db *gorm.DB
 	var User models.User
 	// Store user supplied password in mem map
 	var expectedpassword string
 	// check if the email exists
-	err := db.Where("email = ?", useremail).First(&User).Error
+	err := db.Where("email = ? ", useremail).First(&User).Error
 	if err == nil {
 		// User Exists...Now compare his password with our password
 		expectedpassword = User.Password
@@ -120,7 +120,7 @@ func IsAdmin(c *gin.Context) bool {
 	var User models.User
 	email := c.GetString("user_email")
 	user_email, _ := models.Rdb.HGet(email, "email").Result()
-	// fmt.Println(Rdb.HGetAll("user"))
+	fmt.Println(models.Rdb.HGetAll("user"))
 
 	// Check if the current user had admin role.
 	if err := models.DB.Where("email = ? AND user_role_id=1", user_email).First(&User).Error; err != nil {

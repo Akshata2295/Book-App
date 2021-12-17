@@ -13,7 +13,8 @@ import (
 // the jwt middleware
 
 func GetAuthMiddleware() (*jwt.GinJWTMiddleware, error) {
-	var identityKey = "email"
+	var identityKey1 = "email"
+	var identityKey2 = "Mobile"
 	authMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
 		Realm:            "test zone",
 		SigningAlgorithm: "",
@@ -29,7 +30,7 @@ func GetAuthMiddleware() (*jwt.GinJWTMiddleware, error) {
 		},
 		PayloadFunc: func(data interface{}) jwt.MapClaims {
 			if v, ok := data.(*models.User); ok {
-				return jwt.MapClaims{identityKey: v.Email}
+				return jwt.MapClaims{identityKey1: v.Email, identityKey2: v.Mobile}
 			}
 
 			return jwt.MapClaims{}
@@ -41,7 +42,9 @@ func GetAuthMiddleware() (*jwt.GinJWTMiddleware, error) {
 		// },
 		LogoutResponse: func(c *gin.Context, code int) {
 			email := c.GetString("user_email")
+			mobile := c.GetString("mobile")
 			models.Rdb.Del(email)
+			models.Rdb.Del(mobile)
 			fmt.Println("Redis Cleared")
 			c.JSON(code, gin.H{
 				"message": "logged out successfully",
@@ -52,7 +55,8 @@ func GetAuthMiddleware() (*jwt.GinJWTMiddleware, error) {
 		IdentityHandler: func(c *gin.Context) interface{} {
 			claims := jwt.ExtractClaims(c)
 			return &models.User{
-				Email: claims[identityKey].(string),
+				Email:  claims[identityKey1].(string),
+				Mobile: claims[identityKey2].(string),
 			}
 		},
 		//IdentityKey:   identityKey,

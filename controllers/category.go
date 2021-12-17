@@ -115,6 +115,13 @@ func ListAllCategories(c *gin.Context) {
 	var ExistingCategories []ReturnedCategory
 	user_email, _ := models.Rdb.HGet("user", "email").Result()
 
+	id, _ := models.Rdb.HGet("user", "RoleID").Result()
+
+	if id != "1" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Books can only be seen by Admin user"})
+		return
+	}
+
 	if err := models.DB.Where("email = ?", user_email).First(&User).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
@@ -142,7 +149,13 @@ func GetCategory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "category does not exists."})
 		return
 	}
+	
+	id, _ := models.Rdb.HGet("user", "RoleID").Result()
 
+	if id != "1" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Books can only be Updated by Admin user"})
+		return
+	}
 	// GET FROM CACHE FIRST
 	c.JSON(http.StatusOK, gin.H{"category": existingCategory})
 }

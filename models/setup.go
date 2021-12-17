@@ -35,9 +35,9 @@ func InitializeSettings() Settings {
 	var pass = os.Getenv("REDIS_PASSWORD")
 	db, _ := strconv.Atoi(os.Getenv("REDIS_DB"))
 	Rdb = redis.NewClient(&redis.Options{
-		Addr: addr,
+		Addr:     addr,
 		Password: pass,
-		DB: db,
+		DB:       db,
 	})
 
 	switch {
@@ -121,7 +121,7 @@ func ConnectDataBase() {
 	// connection.AutoMigrate(models...)
 
 	//normal migration
-	err = connection.AutoMigrate(&UserRole{}, &User{}, &Book{}, &Category{}, &RequestLog{}, &FailedRequestLog{})
+	err = connection.AutoMigrate(&UserRole{}, &User{}, &Book{}, &Cart{}, &Category{}, &RequestLog{}, &FailedRequestLog{})
 	if err != nil {
 		fmt.Println("error in migration: ", err)
 	}
@@ -129,7 +129,7 @@ func ConnectDataBase() {
 
 	//DB.Migrator().CreateTable(&Category{})
 	DB = connection
-	
+
 	fmt.Println("Done migrating")
 	//connection.AutoMigrate(&User{})
 

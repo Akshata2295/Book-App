@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	//"errors"
+	//jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 )
 
@@ -28,8 +31,8 @@ func CreateBook(c *gin.Context) {
 	// user_email, _ := claims["email"]
 	//var User models.User
 	var category models.Category
-	
-	// user_email, _ := Rdb.HGet("user", "email").Result()
+
+	// user_email, _ := models.Rdb.HGet("user", "email").Result()
 
 	// // Check if the current user had admin role.
 	// if err := models.DB.Where("email = ? AND user_role_id=2", user_email).First(&User).Error; err != nil {
@@ -40,6 +43,7 @@ func CreateBook(c *gin.Context) {
 	ID, _ := strconv.Atoi(id)
 	fmt.Println(ID)
 	roleId, _ := models.Rdb.HGet("user", "RoleID").Result()
+	CheckRedis(c)
 
 	if roleId != "2" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Books can only be added by supervisor"})
@@ -48,9 +52,9 @@ func CreateBook(c *gin.Context) {
 
 	c.Request.ParseForm()
 	if c.PostForm("name") == "" {
-		ReturnParameterMissingError(c, "name")	
+		ReturnParameterMissingError(c, "name")
 	}
-	
+
 	if c.PostForm("category_id") == "" {
 		ReturnParameterMissingError(c, "category_id")
 	}
@@ -58,11 +62,11 @@ func CreateBook(c *gin.Context) {
 	if c.PostForm("price") == "" {
 		ReturnParameterMissingError(c, "price")
 	}
-	
+
 	title := template.HTMLEscapeString(c.PostForm("name"))
-	category_id, _:= strconv.Atoi(template.HTMLEscapeString(c.PostForm("category_id")))
-	book_id :=template.HTMLEscapeString(c.PostForm("id"))
-    bookID,_ :=strconv.Atoi(book_id)
+	category_id, _ := strconv.Atoi(template.HTMLEscapeString(c.PostForm("category_id")))
+	book_id := template.HTMLEscapeString(c.PostForm("id"))
+	bookID, _ := strconv.Atoi(book_id)
 	price, _ := strconv.Atoi(template.HTMLEscapeString(c.PostForm("price")))
 	// if err != nil {
 	// 	c.JSON(http.StatusBadRequest, gin.H{
@@ -86,7 +90,7 @@ func CreateBook(c *gin.Context) {
 	}
 
 	book := models.Book{
-		ID: bookID,
+		ID:         bookID,
 		Title:      title,
 		CategoryId: category_id,
 		Price:      price,
@@ -102,11 +106,10 @@ func CreateBook(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{
-		"id":   book.ID,
-		"name": book.Title,
-		"price":book.Price,
-		"category_id":book.CategoryId,
-				
+		"id":          book.ID,
+		"name":        book.Title,
+		"price":       book.Price,
+		"category_id": book.CategoryId,
 	})
 
 }
@@ -124,7 +127,7 @@ func UpdateBook(c *gin.Context) {
 	var existingBook models.Book
 	var updateBook models.Book
 	// claims := jwt.ExtractClaims(c)
-	
+
 	// user_email, _ := claims["email"]
 	//var User models.User
 	// user_email, _ := Rdb.HGet("user", "email").Result()
@@ -137,17 +140,21 @@ func UpdateBook(c *gin.Context) {
 
 	id, _ := models.Rdb.HGet("user", "RoleID").Result()
 
+	c.JSON(http.StatusCreated, gin.H{"msg": "Success"})
+
+	CheckRedis(c)
+
 	if id != "2" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Books can only be updated by supervisor"})
 		return
 	}
 
 	// Check if the book already exists.
-	err := models.DB.Where("id = ?", c.Param("id")).First(&existingBook).Error
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "book does not exists."})
-		return
-	}
+	// err := models.DB.Where("id = ?", c.Param("id")).First(&existingBook).Error
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "book does not exists."})
+	// 	return
+	// }
 
 	if err := c.ShouldBindJSON(&updateBook); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -155,13 +162,13 @@ func UpdateBook(c *gin.Context) {
 	}
 
 	models.DB.Model(&existingBook).Updates(updateBook)
+	// fmt.Println(CheckRedis(c))
 }
 
 type ReturnedBook struct {
 	ID         int    `json:"id"`
 	Title      string `json:"name"`
 	CategoryId int    `json:"category_id"`
-	   
 }
 
 // GetBook godoc
@@ -175,8 +182,10 @@ type ReturnedBook struct {
 // @Failure 400,404 {object} object
 func GetBook(c *gin.Context) {
 	var existingBook models.Book
-
+	user_email, _ := models.Rdb.HGet("user", "email").Result()
 	// Check if the book already exists.
+	fmt.Println("user" + user_email)
+	CheckRedis(c)
 	err := models.DB.Where("id = ?", c.Param("id")).First(&existingBook).Error
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "book does not exists."})
@@ -184,7 +193,8 @@ func GetBook(c *gin.Context) {
 	}
 
 	// GET FROM CACHE FIRST
-	c.JSON(http.StatusOK, gin.H{"book": existingBook})
+	c.JSON(http.StatusOK, existingBook)
+	//fmt.Println(CheckRedis(c))
 }
 
 // ListAllBook godoc
@@ -201,18 +211,32 @@ func ListAllBook(c *gin.Context) {
 	// allBook := []models.Book{}
 	// claims := jwt.ExtractClaims(c)
 	// user_email, _ := claims["email"]
-	var User models.User
+	//var User models.User
 	var Book []models.Book
 	var existingBook []ReturnedBook
 	email := c.GetString("user_email")
 	fmt.Println("c variable" + email)
 	user_email, _ := models.Rdb.HGet("user", "email").Result()
 	fmt.Println("user" + user_email)
-
-	if err := models.DB.Where("email = ?", user_email).First(&User).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+	id, _ := models.Rdb.HGet("user", "RoleID").Result()
+	// err := models.Rdb.SIsMember("user", "RoleID")
+	// if err != nil {
+	// 	fmt.Println("Data is not found in Redis")
+	// }
+	// if err := models.DB.Where("role =?",id).First(&User); err !=nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "Data is not found in Database"})
+	// 	return
+	// }
+	// if err := models.DB.Where("email = ?", user_email).First(&User).Error; err != nil {
+	// 	c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+	// 	return
+	// }
+	CheckRedis(c)
+	if id != "2" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Books can only be seen by supervisor"})
 		return
 	}
+
 	models.DB.Model(Book).Find(&existingBook)
 	c.JSON(http.StatusOK, existingBook)
 
@@ -236,22 +260,49 @@ func DeleteBook(c *gin.Context) {
 	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "Book can only be updated by supervisor user"})
 	// 	return
 	// }
-	id, _ := models.Rdb.HGet("user", "RoleID").Result()
-
+	 id, _ := models.Rdb.HGet("user", "RoleID").Result()
+	// email := c.GetString("user_email")
+	// fmt.Println("c variable" + email)
+	// user_email, _ := models.Rdb.HGet("user", "email").Result()
+	// fmt.Println("user" + user_email)
+	CheckRedis(c)
 	if id != "2" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Books can only be deleted by supervisor"})
 		return
 	}
 	// Check if the book already exists.
-	err := models.DB.Where("id = ?", c.Param("id")).First(&existingBook).Error
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "book does not exists."})
-		return
-	}
+	// err := models.DB.Where("id = ?", c.Param("id")).First(&existingBook).Error
+	// if err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "book does not exists."})
+	// 	return
+	// }
 	models.DB.Where("id = ?", c.Param("id")).Delete(&existingBook)
 	// GET FROM CACHE FIRST
 	c.JSON(http.StatusOK, gin.H{"Success": "Book deleted"})
+
 }
 
+func CheckRedis(c *gin.Context) {
+	var User models.User
+	email := c.GetString("user_email")
+	fmt.Println("c variable" + email)
+	user_email, _ := models.Rdb.HGet("user", "email").Result()
+	fmt.Println("user" + user_email)
+	//id, _ := models.Rdb.HGet("user", "RoleID").Result()
+	err := models.Rdb.SIsMember("user", "RoleID")
+	if err == nil {
+		fmt.Println("Data  not found in Redis")
+		return
+	}
+	fmt.Println(models.Rdb.HGetAll("user").Result())
 
+	// if err := models.DB.Where("role =?",id).First(&User); err !=nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "Data is not found in Database"})
+	// 	return
+	// }
+	if err := models.DB.Where("email = ?", user_email).First(&User).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
 
+}

@@ -14,11 +14,11 @@ import (
 const SecretKey = "secret"
 
 type tempUser struct {
-	FirstName       string `json:"first_name" binding:"required"`
-	LastName        string `json:"last_name" binding:"required"`
-	Email           string `json:"email" binding:"required"`
-	Password        string `json:"password" binding:"required"`
-	ConfirmPassword string `json:"confirmpassword" binding:"required"`
+	FirstName        string `json:"first_name" binding:"required"`
+	LastName         string `json:"last_name" binding:"required"`
+	Email            string `json:"email" binding:"required"`
+	Password         string `json:"password" binding:"required"`
+	Confirm_Password string `json:"confirm_password" binding:"required"`
 }
 
 type RedisCache struct {
@@ -50,7 +50,7 @@ func Register(c *gin.Context) {
 	var Role models.UserRole
 
 	c.Request.ParseForm()
-	paramList := []string{"email", "first_name", "last_name", "password", "confirmpassword"}
+	paramList := []string{"email", "first_name", "last_name", "password", "confirm_password"}
 
 	for _, param := range paramList {
 		if c.PostForm(param) == "" {
@@ -67,26 +67,24 @@ func Register(c *gin.Context) {
 	tempUser.FirstName = template.HTMLEscapeString(c.PostForm("first_name"))
 	tempUser.LastName = template.HTMLEscapeString(c.PostForm("last_name"))
 	tempUser.Password = template.HTMLEscapeString(c.PostForm("password"))
-	tempUser.ConfirmPassword = template.HTMLEscapeString(c.PostForm("confirmpassword"))
+	tempUser.Confirm_Password = template.HTMLEscapeString(c.PostForm("confirm_password"))
 
-	if tempUser.Password != tempUser.ConfirmPassword {
+	if tempUser.Password != tempUser.Confirm_Password {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Both passwords do not match."})
 		return
 	}
 
 	ispasswordstrong, _ := IsPasswordStrong(tempUser.Password)
-	if ispasswordstrong  {
+	if ispasswordstrong {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Password is not strong."})
 		return
 	}
-
 
 	// Check if the user already exists.
 	if DoesUserExist(tempUser.Email) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "User already exists."})
 		return
 	}
-
 
 	encryptedPassword, error := HashPassword(tempUser.Password)
 	if error != nil {
@@ -124,12 +122,6 @@ type login struct {
 	Password string `form:"password" json:"password" binding:"required"`
 }
 
-//var Rdb = redis.NewClient(&redis.Options{
-	//Addr:     "localhost:6379",
-	//Password: "", // no password set
-	//DB:       0,  // use default DB
-//})
-
 // redisClient := Redis.createclient()
 
 // Login godoc
@@ -144,8 +136,9 @@ type login struct {
 // @Failure 400,500 {object} object
 func Login(c *gin.Context) (interface{}, error) {
 	var loginVals login
+
 	// var User User
-	var user models.User
+	var User models.User
 	var count int64
 	// var user models.User
 	if err := c.ShouldBind(&loginVals); err != nil {
@@ -153,24 +146,25 @@ func Login(c *gin.Context) (interface{}, error) {
 	}
 	email := loginVals.Email
 	// First check if the user exist or not...
-	models.DB.Where("email = ?", email).First(&user).Count(&count)
+	models.DB.Where("email = ?", email).First(&User).Count(&count)
 	if count == 0 {
 		return nil, jwt.ErrFailedAuthentication
 	}
+
+	fmt.Println("set value ", loginVals.Email)
+	err := models.Rdb.Set("email", loginVals.Email, 0).Err()
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": err.Error(),
+		})
+	}
+
 	if CheckCredentials(loginVals.Email, loginVals.Password, models.DB) {
-		NewRedisCache(c, user)
+		NewRedisCache(c, User)
 		return &models.User{
 			Email: email,
 		}, nil
 	}
-	//fmt.Println("set value ", loginVals.Email)
-	//err := Rdb.Set("email", loginVals.Email, 0).Err()
-	//if err != nil {
-//		c.JSON(http.StatusNotFound, gin.H{
-//			"error": "error in redis",
-//		})
-//	}
-
 	return nil, jwt.ErrFailedAuthentication
 }
 
@@ -196,7 +190,7 @@ func CreateSupervisor(c *gin.Context) {
 	var Role models.UserRole
 
 	c.Request.ParseForm()
-	paramList := []string{"first_name", "last_name", "email", "password", "confirmpassword"}
+	paramList := []string{"first_name", "last_name", "email", "password", "confirm_password"}
 
 	for _, param := range paramList {
 		if c.PostForm(param) == "" {
@@ -208,7 +202,7 @@ func CreateSupervisor(c *gin.Context) {
 	tempUser.FirstName = template.HTMLEscapeString(c.PostForm("first_name"))
 	tempUser.LastName = template.HTMLEscapeString(c.PostForm("last_name"))
 	tempUser.Password = template.HTMLEscapeString(c.PostForm("password"))
-	tempUser.ConfirmPassword = template.HTMLEscapeString(c.PostForm("confirmpassword"))
+	tempUser.Confirm_Password = template.HTMLEscapeString(c.PostForm("confirm_password"))
 
 	//check if the password is strong and matches the password policy
 	//length > 8, atleast 1 upper case, atleast 1 lower case, atleast 1 symbol
@@ -218,7 +212,7 @@ func CreateSupervisor(c *gin.Context) {
 	// 	return
 	// }
 
-	if tempUser.Password != tempUser.ConfirmPassword {
+	if tempUser.Password != tempUser.Confirm_Password {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Both passwords do not match."})
 	}
 
@@ -292,7 +286,7 @@ func CreateAdmin(c *gin.Context) {
 	var Role models.UserRole
 
 	c.Request.ParseForm()
-	paramList := []string{"first_name", "last_name", "email", "password", "confirmpassword"}
+	paramList := []string{"first_name", "last_name", "email", "password", "confirm_password"}
 
 	for _, param := range paramList {
 		if c.PostForm(param) == "" {
@@ -304,13 +298,13 @@ func CreateAdmin(c *gin.Context) {
 	tempUser.FirstName = template.HTMLEscapeString(c.PostForm("first_name"))
 	tempUser.LastName = template.HTMLEscapeString(c.PostForm("last_name"))
 	tempUser.Password = template.HTMLEscapeString(c.PostForm("password"))
-	tempUser.ConfirmPassword = template.HTMLEscapeString(c.PostForm("confirmpassword"))
+	tempUser.Confirm_Password = template.HTMLEscapeString(c.PostForm("confirm_password"))
 
 	fmt.Println("debug start")
 	fmt.Println(tempUser.FirstName, tempUser.LastName, tempUser.Password)
 	fmt.Println("debug end")
 
-	if tempUser.Password != tempUser.ConfirmPassword {
+	if tempUser.Password != tempUser.Confirm_Password {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Both passwords do not match."})
 	}
 

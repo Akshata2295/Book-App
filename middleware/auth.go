@@ -13,14 +13,22 @@ import (
 // the jwt middleware
 
 func GetAuthMiddleware() (*jwt.GinJWTMiddleware, error) {
-	var identityKey1 = "email"
-	var identityKey2 = "Mobile"
+	var Username string
+	if controllers.Flag == "email" {
+
+		Username = "email"
+
+	} else {
+		Username = "mobile"
+	}
 	authMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
 		Realm:            "test zone",
 		SigningAlgorithm: "",
 		Key:              []byte("secret key"),
 		Timeout:          time.Hour,
 		MaxRefresh:       time.Hour,
+		IdentityKey:      Username,
+
 		Authenticator:    controllers.Login,
 		Authorizator: func(data interface{}, c *gin.Context) bool {
 			if _, ok := data.(*models.User); ok {
@@ -30,11 +38,24 @@ func GetAuthMiddleware() (*jwt.GinJWTMiddleware, error) {
 		},
 		PayloadFunc: func(data interface{}) jwt.MapClaims {
 			if v, ok := data.(*models.User); ok {
-				return jwt.MapClaims{identityKey1: v.Email, identityKey2: v.Mobile}
-			}
+				if controllers.Flag == "email" {
+					return jwt.MapClaims{
 
+						Username: v.Email,
+					}
+
+				} else {
+					return jwt.MapClaims{
+
+						Username: v.Mobile,
+					}
+
+				}
+
+			}
 			return jwt.MapClaims{}
 		},
+
 		Unauthorized: func(c *gin.Context, code int, message string) {
 			c.JSON(code, gin.H{"code": code, "message": message})
 		},
@@ -54,9 +75,9 @@ func GetAuthMiddleware() (*jwt.GinJWTMiddleware, error) {
 		},
 		IdentityHandler: func(c *gin.Context) interface{} {
 			claims := jwt.ExtractClaims(c)
+			fmt.Println(claims)
 			return &models.User{
-				Email:  claims[identityKey1].(string),
-				Mobile: claims[identityKey2].(string),
+				Email: claims[Username].(string),
 			}
 		},
 		//IdentityKey:   identityKey,

@@ -14,7 +14,7 @@ type User struct {
 	Email      string `json:"email" gorm:"unique"`
 	UserRoleID int    `json:"role_id,string"`
 	Password   string `json:"-"`
-	Mobile     string `json:""`
+	Mobile     string `json:"mobile"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

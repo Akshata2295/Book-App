@@ -29,8 +29,8 @@ func CreateCategory(c *gin.Context) {
 	// user_email, _ := claims["email"]
 	// var User models.User
 	// user_email, err := Rdb.HGet("user", "email").Result()
-	email := c.GetString("user_email")
-	fmt.Println(models.Rdb.HGetAll(email))
+	// email := c.GetString("user_email")
+	// fmt.Println(models.Rdb.HGetAll(email))
 	id, _ := models.Rdb.HGet("user", "ID").Result()
 	ID, _ := strconv.Atoi(id)
 	fmt.Println(ID)
@@ -116,7 +116,8 @@ func ListAllCategories(c *gin.Context) {
 	user_email, _ := models.Rdb.HGet("user", "email").Result()
 
 	id, _ := models.Rdb.HGet("user", "RoleID").Result()
-
+    
+	CheckRedis(c)
 	if id != "1" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Books can only be seen by Admin user"})
 		return

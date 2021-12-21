@@ -95,10 +95,37 @@ func createInitialData() {
 		LastName:   "admin",
 		Email:      "admin@gmail.com",
 		UserRoleID: 1,
+		Mobile:     "9920319453",
 		Password:   string(encryptedPassword),
 	}).Error
 	if err != nil {
 		fmt.Println("Admin already exists")
+	}
+
+	err = DB.Create(&User{
+		ID:         2,
+		FirstName:  "supervisor",
+		LastName:   "supervisor",
+		Email:      "supervisor@gmail.com",
+		UserRoleID: 2,
+		Mobile:     "97690101886",
+		Password:   string(encryptedPassword),
+	}).Error
+	if err != nil {
+		fmt.Println("Supervisor already exists")
+	}
+
+	err = DB.Create(&User{
+		ID:         3,
+		FirstName:  "customer",
+		LastName:   "customer",
+		Email:      "customer@gmail.com",
+		UserRoleID: 3,
+		Mobile:     "9820332549",
+		Password:   string(encryptedPassword),
+	}).Error
+	if err != nil {
+		fmt.Println("Customer already exists")
 	}
 }
 
@@ -116,9 +143,7 @@ func ConnectDataBase() {
 	}
 	fmt.Println("Migrating tables")
 
-	//tried migrating using interface
-	// var models = []interface{}{&User{}, &UserRole{}, &Book{}, &Category{}}
-	// connection.AutoMigrate(models...)
+	
 
 	//normal migration
 	err = connection.AutoMigrate(&UserRole{}, &User{}, &Book{}, &Cart{}, &Category{}, &RequestLog{}, &FailedRequestLog{})

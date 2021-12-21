@@ -77,14 +77,14 @@ func DoesBookExist(ID int) bool {
 	return true
 }
 
-func CheckCredentials(useremail, userpassword string, db *gorm.DB) bool {
+func CheckCredentials(username, userpassword string, db *gorm.DB) bool {
 	// db := c.MustGet("db").(*gorm.DB)
 	//var db *gorm.DB
 	var User models.User
 	// Store user supplied password in mem map
 	var expectedpassword string
 	// check if the email exists
-	err := db.Where("email = ? ", useremail).First(&User).Error
+	err := db.Where("email = ? OR mobile = ? ", username, username).First(&User).Error
 	if err == nil {
 		// User Exists...Now compare his password with our password
 		expectedpassword = User.Password
@@ -111,6 +111,7 @@ func NewRedisCache(c *gin.Context, user models.User) {
 	models.Rdb.HSet("user", "email", user.Email)
 	models.Rdb.HSet("user", "ID", user.ID)
 	models.Rdb.HSet("user", "RoleID", user.UserRoleID)
+	models.Rdb.HSet("user", "mobile", user.Mobile)
 	fmt.Println(models.Rdb.HGetAll("user").Result())
 }
 
@@ -123,7 +124,7 @@ func IsAdmin(c *gin.Context) bool {
 	fmt.Println(models.Rdb.HGetAll("user"))
 
 	// Check if the current user had admin role.
-	if err := models.DB.Where("email = ? AND user_role_id=1", user_email).First(&User).Error; err != nil {
+	if err := models.DB.Where("email = ? AND user_role_id=1 AND mobile = ?", user_email).First(&User).Error; err != nil {
 		return false
 	}
 	return true

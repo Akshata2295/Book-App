@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strings"
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
@@ -13,10 +14,14 @@ import (
 
 const SecretKey = "secret"
 
+var Flag string
+
+
 type tempUser struct {
 	FirstName        string `json:"first_name" binding:"required"`
 	LastName         string `json:"last_name" binding:"required"`
 	Email            string `json:"email" binding:"required"`
+	Mobile           string `json:"mobile" binding:"required"`
 	Password         string `json:"password" binding:"required"`
 	Confirm_Password string `json:"confirm_password" binding:"required"`
 }
@@ -25,6 +30,7 @@ type RedisCache struct {
 	Id     int
 	Email  string
 	RoleId int
+	Mobile int
 }
 
 func ReturnParameterMissingError(c *gin.Context, parameter string) {
@@ -50,7 +56,7 @@ func Register(c *gin.Context) {
 	var Role models.UserRole
 
 	c.Request.ParseForm()
-	paramList := []string{"email", "first_name", "last_name", "password", "confirm_password"}
+	paramList := []string{"email", "first_name", "last_name", "password", "confirm_password","mobile"}
 
 	for _, param := range paramList {
 		if c.PostForm(param) == "" {
@@ -66,6 +72,7 @@ func Register(c *gin.Context) {
 	tempUser.Email = template.HTMLEscapeString(c.PostForm("email"))
 	tempUser.FirstName = template.HTMLEscapeString(c.PostForm("first_name"))
 	tempUser.LastName = template.HTMLEscapeString(c.PostForm("last_name"))
+	tempUser.Mobile = template.HTMLEscapeString(c.PostForm("mobile"))
 	tempUser.Password = template.HTMLEscapeString(c.PostForm("password"))
 	tempUser.Confirm_Password = template.HTMLEscapeString(c.PostForm("confirm_password"))
 
@@ -103,6 +110,7 @@ func Register(c *gin.Context) {
 		LastName:   tempUser.LastName,
 		Email:      tempUser.Email,
 		Password:   encryptedPassword,
+		Mobile:     tempUser.Mobile,
 		UserRoleID: Role.Id, //This endpoint will be used only for customer registration.
 		CreatedAt:  time.Now(),
 		IsActive:   true,
@@ -117,10 +125,10 @@ func Register(c *gin.Context) {
 
 }
 
-type login struct {
-	Email    string `form:"email" json:"email" binding:"required"`
-	Password string `form:"password" json:"password" binding:"required"`
-}
+// type login struct {
+// 	Usename    string `form:"username" json:"email" binding:"required"`
+// 	Password string `form:"password" json:"password" binding:"required"`
+// }
 
 // redisClient := Redis.createclient()
 
@@ -135,35 +143,58 @@ type login struct {
 // @Success 200 {object} object
 // @Failure 400,500 {object} object
 func Login(c *gin.Context) (interface{}, error) {
-	var loginVals login
+	// var loginVals login
 
 	// var User User
 	var User models.User
 	var count int64
-	// var user models.User
-	if err := c.ShouldBind(&loginVals); err != nil {
-		return "", jwt.ErrMissingLoginValues
+
+	
+	username := template.HTMLEscapeString(c.PostForm("username"))
+	password := template.HTMLEscapeString(c.PostForm("password"))
+	
+	flag := strings.Index(username, "@")
+
+	if flag == -1 {
+		Flag = "mobile"
+		fmt.Println("User Login With Mobile")
+	} else {
+		Flag = "email"
+		fmt.Println("User Login with Email")
 	}
-	email := loginVals.Email
-	// First check if the user exist or not...
-	models.DB.Where("email = ?", email).First(&User).Count(&count)
+
+//email := loginVals.Email
+if Flag == "email" {
+	models.DB.Where("email = ?", username).Find(&User).Count(&count)
 	if count == 0 {
 		return nil, jwt.ErrFailedAuthentication
 	}
+} else if Flag == "mobile" {
+	models.DB.Where("mobile = ?", username).Find(&User).Count(&count)
+	if count == 0 {
+		return nil, jwt.ErrFailedAuthentication
+	}
+}
 
-	fmt.Println("set value ", loginVals.Email)
-	err := models.Rdb.Set("email", loginVals.Email, 0).Err()
+	fmt.Println("set value ", username)
+	err := models.Rdb.Set("email, mobile", username, 0).Err()
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": err.Error(),
 		})
 	}
 
-	if CheckCredentials(loginVals.Email, loginVals.Password, models.DB) {
+	if CheckCredentials(username, password, models.DB) {
 		NewRedisCache(c, User)
-		return &models.User{
-			Email: email,
-		}, nil
+		if Flag == "email" {
+			return &models.User{
+				Email: username,
+			}, nil
+		} else if Flag == "mobile" {
+			return &models.User{
+				Mobile: username,
+			}, nil
+		}
 	}
 	return nil, jwt.ErrFailedAuthentication
 }
@@ -190,7 +221,7 @@ func CreateSupervisor(c *gin.Context) {
 	var Role models.UserRole
 
 	c.Request.ParseForm()
-	paramList := []string{"first_name", "last_name", "email", "password", "confirm_password"}
+	paramList := []string{"first_name", "last_name", "email", "password", "confirm_password","mobile"}
 
 	for _, param := range paramList {
 		if c.PostForm(param) == "" {
@@ -201,6 +232,7 @@ func CreateSupervisor(c *gin.Context) {
 	tempUser.Email = template.HTMLEscapeString(c.PostForm("email"))
 	tempUser.FirstName = template.HTMLEscapeString(c.PostForm("first_name"))
 	tempUser.LastName = template.HTMLEscapeString(c.PostForm("last_name"))
+	tempUser.Mobile = template.HTMLEscapeString(c.PostForm("mobile"))
 	tempUser.Password = template.HTMLEscapeString(c.PostForm("password"))
 	tempUser.Confirm_Password = template.HTMLEscapeString(c.PostForm("confirm_password"))
 
@@ -214,6 +246,12 @@ func CreateSupervisor(c *gin.Context) {
 
 	if tempUser.Password != tempUser.Confirm_Password {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Both passwords do not match."})
+	}
+
+	ispasswordstrong, _ := IsPasswordStrong(tempUser.Password)
+	if ispasswordstrong {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password is not strong."})
+		return
 	}
 
 	// Check if the user already exists.
@@ -238,6 +276,7 @@ func CreateSupervisor(c *gin.Context) {
 		FirstName:  tempUser.FirstName,
 		LastName:   tempUser.LastName,
 		Email:      tempUser.Email,
+		Mobile:     tempUser.Mobile,
 		Password:   encryptedPassword,
 		UserRoleID: Role.Id, //This endpoint will be used only for customer registeration.
 		CreatedAt:  time.Now(),
@@ -286,7 +325,7 @@ func CreateAdmin(c *gin.Context) {
 	var Role models.UserRole
 
 	c.Request.ParseForm()
-	paramList := []string{"first_name", "last_name", "email", "password", "confirm_password"}
+	paramList := []string{"first_name", "last_name", "email", "password", "confirm_password","mobile"}
 
 	for _, param := range paramList {
 		if c.PostForm(param) == "" {
@@ -297,11 +336,12 @@ func CreateAdmin(c *gin.Context) {
 	tempUser.Email = template.HTMLEscapeString(c.PostForm("email"))
 	tempUser.FirstName = template.HTMLEscapeString(c.PostForm("first_name"))
 	tempUser.LastName = template.HTMLEscapeString(c.PostForm("last_name"))
+	tempUser.Mobile = template.HTMLEscapeString(c.PostForm("mobile")) 
 	tempUser.Password = template.HTMLEscapeString(c.PostForm("password"))
 	tempUser.Confirm_Password = template.HTMLEscapeString(c.PostForm("confirm_password"))
 
 	fmt.Println("debug start")
-	fmt.Println(tempUser.FirstName, tempUser.LastName, tempUser.Password)
+	fmt.Println(tempUser.FirstName, tempUser.LastName, tempUser.Mobile, tempUser.Password)
 	fmt.Println("debug end")
 
 	if tempUser.Password != tempUser.Confirm_Password {
@@ -315,6 +355,13 @@ func CreateAdmin(c *gin.Context) {
 	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "Password is not strong."})
 	// 	return
 	// }
+
+
+	ispasswordstrong, _ := IsPasswordStrong(tempUser.Password)
+	if !ispasswordstrong {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Password is not strong."})
+		return
+	}
 
 	// Check if the user already exists.
 	if DoesUserExist(tempUser.Email) {
@@ -338,6 +385,7 @@ func CreateAdmin(c *gin.Context) {
 		FirstName:  tempUser.FirstName,
 		LastName:   tempUser.LastName,
 		Email:      tempUser.Email,
+		Mobile:     tempUser.Mobile,
 		Password:   encryptedPassword,
 		UserRoleID: Role.Id, //This endpoint will be used only for customer registeration.
 		CreatedAt:  time.Now(),
